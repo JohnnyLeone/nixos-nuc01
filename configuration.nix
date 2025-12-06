@@ -16,11 +16,7 @@
     hostName = "nuc01";
     networkmanager.enable = true;
     firewall = {
-      enable = true;
-      allowedTCPPorts = [
-        22    # SSH
-        9090  # Cockpit
-      ];
+      enable = false;
     };
   };
 
@@ -58,7 +54,20 @@
   # Cockpit Web GUI
   ########################
 
-  services.cockpit.enable = true;
+  services.cockpit = {
+    enable = true;
+
+    # Work around NixOS Cockpit websocket/origin bug and allow browser access.
+    # Adjust hostnames/IPs as needed.
+    settings.WebService.Origins = lib.mkForce ''
+      http://localhost:9090
+      https://localhost:9090
+      https://nuc01:9090
+      https://nuc01.intranet.hirschauer-it.de:9090
+      https://192.168.42.21:9090
+    '';
+  };
+
 
   ########################
   # Virtualisation: libvirt/KVM
