@@ -9,15 +9,63 @@
   # Basic system settings
   ########################
 
+  boot.kernelModules = [ "coretemp" ];
   boot.loader.systemd-boot.enable = true;
   boot.loader.efi.canTouchEfiVariables = true;
+  boot.loader.timeout = 0;
+  boot.loader.systemd-boot.editor = true;
 
   networking = {
     hostName = "nuc01";
-    networkmanager.enable = true;
-    firewall = {
-      enable = false;
+
+    networkmanager.enable = false;
+    useNetworkd = true;
+
+    useDHCP = false;
+
+    enableIPv6 = false;
+
+    ############################
+    # Bridges for host & guests
+    ############################
+
+    bridges.hostbr0.interfaces = [ "eno1" ];
+
+    bridges.guestbr0.interfaces = [ "thunderbolt0.1" ];
+
+    ############################
+    # VLANs
+    ############################
+
+    vlans."hostbr0.41" = {
+      id = 41;
+      interface = "hostbr0";
     };
+
+    vlans."hostbr0.44" = {
+      id = 44;
+      interface = "hostbr0";
+    };
+
+    vlans."thunderbolt0.1" = {
+      id = 1;
+      interface = "thunderbolt0";
+    };
+
+    ############################
+    # IP configuration
+    ############################
+
+    interfaces.hostbr0.useDHCP = true;
+
+    interfaces.thunderbolt0.ipv4.addresses = [
+      { address = "192.168.40.21"; prefixLength = 24; }
+    ];
+
+    interfaces.eno1.useDHCP = false;
+    interfaces."thunderbolt0.1".useDHCP = false;
+
+    firewall.enable = false;
   };
 
   time.timeZone = "Europe/Berlin";
@@ -142,7 +190,13 @@
     git
     htop
     docker-compose
-    # virt-manager is usually nicer on your laptop, not on the server
+    cockpit
+    libvirt
+    libvirt-dbus
+    lm_sensors
+    s-tui
+    iperf3
+    iftop
   ];
 
   ########################
@@ -159,4 +213,3 @@
 
   system.stateVersion = "25.11";
 }
-
