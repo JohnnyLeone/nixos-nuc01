@@ -1,0 +1,153 @@
+{ config, lib, pkgs, ... }:
+
+{
+  imports = [
+    ./hardware-configuration.nix
+  ];
+
+  ########################
+  # Basic system settings
+  ########################
+
+  boot.loader.systemd-boot.enable = true;
+  boot.loader.efi.canTouchEfiVariables = true;
+
+  networking = {
+    hostName = "nuc01";
+    networkmanager.enable = true;
+    firewall = {
+      enable = true;
+      allowedTCPPorts = [
+        22    # SSH
+        9090  # Cockpit
+      ];
+    };
+  };
+
+  time.timeZone = "Europe/Berlin";
+
+  ########################
+  # User + SSH
+  ########################
+
+  users.users.ahs = {
+    isNormalUser = true;
+    extraGroups = [ "wheel" "networkmanager" "libvirtd" "docker" "kvm" ];
+    packages = with pkgs; [
+      tree
+    ];
+    openssh.authorizedKeys.keys = [
+      "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQCh31jo3CJ125IAmWKeqs/2UzdbZIrioQB1AZwAmP03hREHgDRX5MXjyUIVheXBoaRS3aWrerWAfxnvK/VESx6Y4Xd/2lgNUpqnJmNj1z8PjQp1shXQhVxk2HR1/kmaAB3mX5rJRh5WLFF83k6+52+0HBXw4PyDAo+jqrD5HSOQldsRn/Xe4knUHpgv1LUm77oZOeWJdQNvRN2XHsKYbxBeTiFlbJ+yKwBUr6kh0wDJNcTPQLiAuDtUGXBbysLrs1doAacajieIizaBupFJvsV88+iIDuh5AbAhehQGo4r4Q1IREW0ziMmIKWarH6ngadhKIIKGaG875tQfNZ5/o9uuCrGycHcKs6IF/4rLgMFibeNmTf/xcovdUsGNunkYkUJ6z6totVKzVrS/NCUxT41qlXTWlwCMOd/RCZSUc/ZpX3Htrt5+RmP3/sfOp6PvOzKNuYqsz6bDpFbZby2FaBZCBmcwKJbTQsQij3CudGBjbuDXKforRpuuzZn/mVYs5QM= ahirschauer@Andreass-MacBook-Pro.local"
+    ];
+  };
+
+  security.sudo.enable = true;
+  # Pick what you prefer:
+  # security.sudo.wheelNeedsPassword = true;  # safer
+  security.sudo.wheelNeedsPassword = false;   # convenient
+
+  services.openssh = {
+    enable = true;
+    settings = {
+      PasswordAuthentication = false;  # key-only SSH
+      PermitRootLogin = "no";
+    };
+  };
+
+  ########################
+  # Cockpit Web GUI
+  ########################
+
+  services.cockpit.enable = true;
+
+  ########################
+  # Virtualisation: libvirt/KVM
+  ########################
+
+  virtualisation.libvirtd = {
+    enable = true;
+    qemu = {
+      package = pkgs.qemu_kvm;
+      runAsRoot = false;
+    };
+  };
+
+  ########################
+  # Docker
+  ########################
+
+  virtualisation.docker = {
+    enable = true;
+    enableOnBoot = true;
+
+    daemon.settings = {
+      "data-root" = "/data/docker/data-root";
+    };
+
+    autoPrune = {
+      enable = true;
+      dates = "weekly";
+      flags = [ "--all" ];
+    };
+  };
+
+  ########################
+  # /data directory layout
+  ########################
+
+  systemd.tmpfiles.rules = [
+    "d /data 0755 root root -"
+    "d /data/docker 0755 root root -"
+    "d /data/docker/compose 0755 root root -"
+    "d /data/docker/volumes 0755 root root -"
+    "d /data/docker/data-root 0755 root root -"
+
+    "d /data/libvirt 0755 root root -"
+    "d /data/libvirt/isos 0755 root root -"
+    "d /data/libvirt/disks 0755 root root -"
+    "d /data/libvirt/saved_vms 0755 root root -"
+  ];
+
+  ########################
+  # Bind mounts for libvirt
+  ########################
+
+  fileSystems."/var/lib/libvirt/images" = {
+    device = "/data/libvirt/disks";
+    fsType = "none";
+    options = [ "bind" ];
+  };
+
+  fileSystems."/var/lib/libvirt/isos" = {
+    device = "/data/libvirt/isos";
+    fsType = "none";
+    options = [ "bind" ];
+  };
+
+  ########################
+  # Minimal packages
+  ########################
+
+  environment.systemPackages = with pkgs; [
+    vim
+    git
+    htop
+    docker-compose
+    # virt-manager is usually nicer on your laptop, not on the server
+  ];
+
+  ########################
+  # Nix settings
+  ########################
+
+  nix.settings.experimental-features = [ "nix-command" "flakes" ];
+
+  nix.gc = {
+    automatic = true;
+    dates = "daily";
+    options = "--delete-older-than 7d";
+  };
+
+  system.stateVersion = "25.11";
+}
+
