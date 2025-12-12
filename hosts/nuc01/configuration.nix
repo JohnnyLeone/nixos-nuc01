@@ -1,9 +1,21 @@
 { config, lib, pkgs, ... }:
 
+
+let
+  ovmf = pkgs.OVMFFull.fd;
+in
 {
   imports = [
     ./hardware-configuration.nix
   ];
+
+  nixpkgs.config.allowUnfreePredicate = pkg: builtins.elem (lib.getName pkg) [
+    "netdata"
+  ];
+
+  services.netdata.package = pkgs.netdata.override {
+    withCloudUi = true;
+  };
 
   ########################
   # Basic system settings
@@ -93,8 +105,8 @@
   services.openssh = {
     enable = true;
     settings = {
-      PasswordAuthentication = false;  # key-only SSH
-      PermitRootLogin = "no";
+      PasswordAuthentication = true;  # key-only SSH
+      PermitRootLogin = "yes";
     };
   };
 
@@ -116,6 +128,10 @@
     '';
   };
 
+  services.openiscsi = {
+    enable = true;
+    name = "iqn.2005-10.org.nixos.ctl:nuc01";
+  };
 
   ########################
   # Virtualisation: libvirt/KVM
@@ -123,9 +139,13 @@
 
   virtualisation.libvirtd = {
     enable = true;
+    onShutdown = "shutdown";
+    parallelShutdown = 4;
     qemu = {
       package = pkgs.qemu_kvm;
       runAsRoot = false;
+      swtpm.enable = true;
+      vhostUserPackages = with pkgs; [ virtiofsd ];
     };
   };
 
@@ -149,6 +169,20 @@
   };
 
   ########################
+  # Netdata
+  ########################
+
+  services.netdata = {
+    enable = true;
+    config.global = {
+      "memory mode" = "ram";
+      "debug log" = "none";
+      "access log" = "none";
+      "error log" = "syslog";
+    };
+  };
+
+  ########################
   # /data directory layout
   ########################
 
@@ -163,6 +197,15 @@
     "d /data/libvirt/isos 0755 root root -"
     "d /data/libvirt/disks 0755 root root -"
     "d /data/libvirt/saved_vms 0755 root root -"
+
+    "L+ /usr/bin/qemu-system-x86_64 - - - - ${pkgs.qemu_kvm}/bin/qemu-system-x86_64"
+    "d /usr/share 0755 root root -"
+    "d /usr/share/edk2 0755 root root -"
+    "d /usr/share/edk2/x64 0755 root root -"
+    "L+ /usr/share/edk2/x64/OVMF_CODE.4m.fd - - - - ${ovmf}/FV/OVMF_CODE.fd"
+    "L+ /usr/share/edk2/x64/OVMF_VARS.4m.fd - - - - ${ovmf}/FV/OVMF_VARS.fd"
+    "L+ /usr/share/edk2/x64/OVMF_CODE.secboot.4m.fd - - - - ${ovmf}/FV/OVMF_CODE.fd"
+    "L+ /usr/share/edk2/x64/OVMF_VARS.secboot.4m.fd - - - - ${ovmf}/FV/OVMF_VARS.fd"
   ];
 
   ########################
@@ -193,10 +236,13 @@
     cockpit
     libvirt
     libvirt-dbus
+    openiscsi
     lm_sensors
     s-tui
     iperf3
     iftop
+    swtpm
+    virtiofsd
   ];
 
   ########################
