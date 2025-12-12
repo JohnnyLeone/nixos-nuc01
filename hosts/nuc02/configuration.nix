@@ -189,6 +189,7 @@
     vim
     git
     htop
+    tree
     docker-compose
     cockpit
     libvirt
