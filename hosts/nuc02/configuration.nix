@@ -16,7 +16,7 @@
   boot.loader.systemd-boot.editor = true;
 
   networking = {
-    hostName = "nuc01";
+    hostName = "nuc02";
 
     networkmanager.enable = false;
     useNetworkd = true;
@@ -59,7 +59,7 @@
     interfaces.hostbr0.useDHCP = true;
 
     interfaces.thunderbolt0.ipv4.addresses = [
-      { address = "192.168.40.21"; prefixLength = 24; }
+      { address = "192.168.40.22"; prefixLength = 24; }
     ];
 
     interfaces.eno1.useDHCP = false;
@@ -110,9 +110,9 @@
     settings.WebService.Origins = lib.mkForce ''
       http://localhost:9090
       https://localhost:9090
-      https://nuc01:9090
-      https://nuc01.intranet.hirschauer-it.de:9090
-      https://192.168.42.21:9090
+      https://nuc02:9090
+      https://nuc02.intranet.hirschauer-it.de:9090
+      https://192.168.42.22:9090
     '';
   };
 
